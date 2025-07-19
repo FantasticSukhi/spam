@@ -1,7 +1,7 @@
 # Bot Configuration
 BOT_TOKENS = [
-    "7747234167:AAETBn0A00JT3HY-UyICgNbZCioRS8rl6AE",
-    "8161769845:AAF3hqOVinLNIG5Mw3ho4ALZcFIRnKv-QBo"
+    "7747234167:AAGsuZlyXZwIarywwFyKcHPFVEYfBY7xcpk",
+    "8161769845:AAF2QYkJFcKTreGJF7keex64uVdapVU5muc"
 ]
 
 # Admin Configuration
