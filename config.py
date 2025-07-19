@@ -25,4 +25,11 @@ OWNER_USERNAME = "GARUD_OWNER"
 
 # System
 LOG_FILE = "spambot.log"
+
+# To either:
+LOG_FILE = "/var/log/spambot.log"  # Absolute path (recommended)
+
+# Or if you want logs in your project directory:
+LOG_FILE = "logs/spambot.log"  # Relative path (create logs directory first)
+
 MAX_THREADS = 50  # Maximum concurrent threads
