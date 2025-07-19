@@ -1,26 +1,27 @@
 # Bot Configuration
 BOT_TOKENS = [
-    "YOUR_BOT_TOKEN_1",
-    "YOUR_BOT_TOKEN_2"
+    "7747234167:AAETBn0A00JT3HY-UyICgNbZCioRS8rl6AE",
+    "8161769845:AAF3hqOVinLNIG5Mw3ho4ALZcFIRnKv-QBo"
 ]
 
 # Admin Configuration
-OWNER_ID = 1234567890  # Your Telegram ID
-SUDO_USERS = [1234567890, 9876543210]  # Additional admin IDs
+OWNER_ID = 7448520005  # Your Telegram ID
+SUDO_USERS = [7448520005]  # Additional admin IDs
 
 # Limits
 SMALL_SPAM_LIMIT = 999
 BIG_SPAM_LIMIT = 999999
-RAID_LIMIT = 100  # Max raid messages per target
+RAID_LIMIT = 100000
+SRAID_LIMIT = 50000
 
 # Cooldowns (in seconds)
 SPAM_COOLDOWN = 0.3
 RAID_COOLDOWN = 0.5
 
 # Links
-GROUP_LINK = "https://t.me/your_support_group"
-CHANNEL_LINK = "https://t.me/your_update_channel"
-OWNER_USERNAME = "@your_username"
+GROUP_LINK = "https://t.me/ONLINE_GUPSHUP_2"
+CHANNEL_LINK = "https://t.me/GARUD_NETWORK"
+OWNER_USERNAME = "@GARUD_OWNER"
 
 # System
 LOG_FILE = "spambot.log"
