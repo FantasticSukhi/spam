@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import socket
 import logging
 from logging.handlers import RotatingFileHandler
 import time
@@ -18,25 +19,31 @@ import os
 from config import *
 
 # ======================
+# SINGLE INSTANCE LOCK
+# ======================
+try:
+    lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    lock_socket.bind('\0spambot_lock')
+    print("🔒 Single instance lock acquired")
+except socket.error:
+    print("⚠️ Another bot instance is already running!")
+    exit(1)
+
+# ======================
 # LOGGING CONFIGURATION
 # ======================
 def setup_logging():
     """Configure advanced logging system"""
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     
-    # Ensure log directory exists
-    log_dir = os.path.dirname(LOG_FILE)
-    if log_dir:  # Only create dir if path contains directories
-        os.makedirs(log_dir, exist_ok=True)
-    
-    # Set up rotating logs
-    handler = RotatingFileHandler(
+    file_handler = RotatingFileHandler(
         LOG_FILE,
         maxBytes=5*1024*1024,
         backupCount=3,
         encoding='utf-8'
     )
-    handler.setFormatter(logging.Formatter(log_format))
+    file_handler.setFormatter(logging.Formatter(log_format))
     
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter(log_format))
@@ -44,7 +51,7 @@ def setup_logging():
     logging.basicConfig(
         level=logging.INFO,
         format=log_format,
-        handlers=[handler, console_handler]
+        handlers=[file_handler, console_handler]
     )
 
 setup_logging()
@@ -70,9 +77,9 @@ def load_messages():
             RAID_MESSAGES = [line.strip() for line in f if line.strip()]
         with open('sraid_messages.txt', 'r', encoding='utf-8') as f:
             SRAID_MESSAGES = [line.strip() for line in f if line.strip()]
-        logger.info(f"Loaded {len(RAID_MESSAGES)} raid and {len(SRAID_MESSAGES)} shayari messages")
+        logger.info(f"📂 Loaded {len(RAID_MESSAGES)} raid and {len(SRAID_MESSAGES)} shayari messages")
     except Exception as e:
-        logger.error(f"Error loading messages: {str(e)}", exc_info=True)
+        logger.error(f"❌ Error loading messages: {str(e)}", exc_info=True)
         RAID_MESSAGES = ["{target} RAID DEFAULT MESSAGE"]
         SRAID_MESSAGES = ["{target} SHAYARI DEFAULT MESSAGE"]
 
@@ -132,9 +139,9 @@ def start(update: Update, context: CallbackContext) -> None:
             parse_mode="HTML",
             disable_web_page_preview=True
         )
-        logger.info(f"Sent welcome message to {user.id}")
+        logger.info(f"👋 Sent welcome to user {user.id}")
     except Exception as e:
-        logger.error(f"Start command error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Start command error: {str(e)}", exc_info=True)
         update.message.reply_text("🚫 Error processing your request!")
 
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -163,9 +170,9 @@ def help_command(update: Update, context: CallbackContext) -> None:
             parse_mode="HTML",
             disable_web_page_preview=True
         )
-        logger.info(f"Sent help to {update.effective_user.id}")
+        logger.info(f"ℹ️ Sent help to user {update.effective_user.id}")
     except Exception as e:
-        logger.error(f"Help command error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Help command error: {str(e)}", exc_info=True)
         update.message.reply_text("ℹ️ Basic commands: /spam, /raid, /help")
 
 def ping(update: Update, context: CallbackContext) -> None:
@@ -176,9 +183,9 @@ def ping(update: Update, context: CallbackContext) -> None:
         end_time = time.time()
         ping_ms = round((end_time - start_time) * 1000, 2)
         message.edit_text(f"🏓 Pong! {ping_ms}ms\n⏳ Uptime: {get_uptime()}")
-        logger.info(f"Ping response: {ping_ms}ms")
+        logger.info(f"⏱ Ping response: {ping_ms}ms")
     except Exception as e:
-        logger.error(f"Ping command error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Ping command error: {str(e)}", exc_info=True)
         update.message.reply_text("❌ Couldn't calculate ping")
 
 def alive(update: Update, context: CallbackContext) -> None:
@@ -203,9 +210,9 @@ def alive(update: Update, context: CallbackContext) -> None:
             parse_mode="HTML",
             disable_web_page_preview=True
         )
-        logger.info(f"Sent alive status to {update.effective_user.id}")
+        logger.info(f"💓 Alive check by {update.effective_user.id}")
     except Exception as e:
-        logger.error(f"Alive command error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Alive command error: {str(e)}", exc_info=True)
         update.message.reply_text("❌ Couldn't generate status")
 
 def raid(update: Update, context: CallbackContext) -> None:
@@ -243,12 +250,12 @@ def raid(update: Update, context: CallbackContext) -> None:
         ).start()
         
         update.message.reply_text(f"⚔️ Raid started against {target}!")
-        logger.info(f"Raid started by {update.effective_user.id} on {target} for {count} messages")
+        logger.info(f"🔥 Raid started by {update.effective_user.id} on {target} ({count} messages)")
 
     except ValueError:
         update.message.reply_text("❌ Invalid count! Usage: /raid <count> @username")
     except Exception as e:
-        logger.error(f"Raid command error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Raid command error: {str(e)}", exc_info=True)
         update.message.reply_text("❌ Error starting raid!")
 
 def execute_raid(bot, chat_id, target, count):
@@ -263,19 +270,19 @@ def execute_raid(bot, chat_id, target, count):
                 bot.send_message(chat_id=chat_id, text=message)
                 
                 if (i+1) % 10 == 0:
-                    logger.info(f"Sent {i+1}/{count} raid messages to {target}")
+                    logger.info(f"📨 Sent {i+1}/{count} raid messages to {target}")
                 
                 time.sleep(RAID_COOLDOWN)
                 
             except Exception as msg_error:
-                logger.error(f"Error sending raid message {i+1}: {str(msg_error)}")
+                logger.error(f"❌ Error sending raid message {i+1}: {str(msg_error)}")
                 time.sleep(2)
                 
     except Exception as e:
-        logger.error(f"Raid execution failed: {str(e)}", exc_info=True)
+        logger.error(f"❌ Raid execution failed: {str(e)}", exc_info=True)
     finally:
         active_raids.pop(chat_id, None)
-        logger.info(f"Raid completed on {target}")
+        logger.info(f"✅ Raid completed on {target}")
 
 def sraid(update: Update, context: CallbackContext) -> None:
     """Handle /sraid command"""
@@ -312,12 +319,12 @@ def sraid(update: Update, context: CallbackContext) -> None:
         ).start()
         
         update.message.reply_text(f"💘 Shayari raid started for {target}!")
-        logger.info(f"Shayari raid by {update.effective_user.id} on {target} for {count} messages")
+        logger.info(f"💌 Shayari raid by {update.effective_user.id} on {target} ({count} messages)")
 
     except ValueError:
         update.message.reply_text("❌ Invalid count! Usage: /sraid <count> @username")
     except Exception as e:
-        logger.error(f"Shayari command error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Shayari command error: {str(e)}", exc_info=True)
         update.message.reply_text("❌ Error starting shayari raid!")
 
 def execute_sraid(bot, chat_id, target, count):
@@ -332,19 +339,19 @@ def execute_sraid(bot, chat_id, target, count):
                 bot.send_message(chat_id=chat_id, text=message)
                 
                 if (i+1) % 5 == 0:
-                    logger.info(f"Sent {i+1}/{count} shayaris to {target}")
+                    logger.info(f"📨 Sent {i+1}/{count} shayaris to {target}")
                 
                 time.sleep(SRAID_COOLDOWN)
                 
             except Exception as msg_error:
-                logger.error(f"Error sending shayari {i+1}: {str(msg_error)}")
+                logger.error(f"❌ Error sending shayari {i+1}: {str(msg_error)}")
                 time.sleep(3)
                 
     except Exception as e:
-        logger.error(f"Shayari execution failed: {str(e)}", exc_info=True)
+        logger.error(f"❌ Shayari execution failed: {str(e)}", exc_info=True)
     finally:
         active_raids.pop(chat_id, None)
-        logger.info(f"Shayari raid completed on {target}")
+        logger.info(f"✅ Shayari raid completed on {target}")
 
 def stop_spam(update: Update, context: CallbackContext) -> None:
     """Handle /stop command"""
@@ -353,15 +360,15 @@ def stop_spam(update: Update, context: CallbackContext) -> None:
         if chat_id in active_spams:
             del active_spams[chat_id]
             update.message.reply_text("🛑 Stopped unlimited spam!")
-            logger.info(f"Stopped spam in chat {chat_id}")
+            logger.info(f"⏹ Stopped spam in chat {chat_id}")
         elif chat_id in active_raids:
             del active_raids[chat_id]
             update.message.reply_text("🛑 Stopped active raid!")
-            logger.info(f"Stopped raid in chat {chat_id}")
+            logger.info(f"⏹ Stopped raid in chat {chat_id}")
         else:
             update.message.reply_text("ℹ️ No active spam or raid to stop")
     except Exception as e:
-        logger.error(f"Stop command error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Stop command error: {str(e)}", exc_info=True)
         update.message.reply_text("❌ Error stopping activities")
 
 def button_handler(update: Update, context: CallbackContext) -> None:
@@ -371,74 +378,92 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         if query.data == "help":
             help_command(update, context)
         query.answer()
-        logger.info(f"Handled button press: {query.data}")
+        logger.info(f"🖱 Button pressed: {query.data}")
     except Exception as e:
-        logger.error(f"Button handler error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Button handler error: {str(e)}", exc_info=True)
 
 # ======================
-# MAIN BOT SETUP
+# BOT INITIALIZATION
 # ======================
-def setup_bot(token):
-    """Initialize and run a bot instance"""
+def initialize_bot(token):
+    """Create and configure bot instance"""
+    try:
+        logger.info(f"🚀 Initializing bot with token {token[:5]}...")
+        
+        updater = Updater(
+            token,
+            use_context=True,
+            request_kwargs={
+                'read_timeout': 30,
+                'connect_timeout': 30
+            }
+        )
+        
+        # Clear any pending updates
+        updater.bot.delete_webhook(drop_pending_updates=True)
+        return updater
+        
+    except Exception as e:
+        logger.error(f"❌ Bot initialization failed: {str(e)}", exc_info=True)
+        raise
+
+# ======================
+# MAIN BOT LOOP
+# ======================
+def run_bot(token):
+    """Run bot with automatic crash recovery"""
     while True:
         try:
-            logger.info(f"Starting bot with token {token[:5]}...")
-            updater = Updater(token)
+            updater = initialize_bot(token)
             dp = updater.dispatcher
-
-            # Register handlers
+            
+            # Register command handlers
             dp.add_handler(CommandHandler("start", start))
             dp.add_handler(CommandHandler("help", help_command))
             dp.add_handler(CommandHandler("ping", ping))
             dp.add_handler(CommandHandler("alive", alive))
-            dp.add_handler(CommandHandler("spam", lambda u, c: spam_handler(u, c, "spam")))
-            dp.add_handler(CommandHandler("bspam", lambda u, c: spam_handler(u, c, "bspam")))
-            dp.add_handler(CommandHandler("uspam", lambda u, c: spam_handler(u, c, "uspam")))
             dp.add_handler(CommandHandler("raid", raid))
             dp.add_handler(CommandHandler("sraid", sraid))
             dp.add_handler(CommandHandler("stop", stop_spam))
             dp.add_handler(CallbackQueryHandler(button_handler))
-
-            updater.start_polling()
-            logger.info(f"Bot {token[:5]}... is now running")
-            updater.idle()
+            
+            # Start polling
+            updater.start_polling(
+                clean=True,
+                timeout=30,
+                drop_pending_updates=True
+            )
+            
+            logger.info(f"✅ Bot {token[:5]}... is now running")
+            updater.idle()  # Block until stopped
             
         except Exception as e:
-            logger.critical(f"Bot crashed: {str(e)}", exc_info=True)
-            logger.info("Restarting bot in 10 seconds...")
-            time.sleep(10)
+            logger.critical(f"🔥 Bot crashed: {str(e)}", exc_info=True)
+            logger.info("🔄 Restarting in 30 seconds...")
+            time.sleep(30)
 
-def main():
-    """Main entry point"""
-    try:
-        logger.info("===== Starting SpamBot System =====")
-        logger.info(f"Owner ID: {OWNER_ID}")
-        logger.info(f"Sudo Users: {SUDO_USERS}")
-        logger.info(f"Using {len(BOT_TOKENS)} bot tokens")
-        
-        # Load message files
-        load_messages()
-        
-        # Create assets directory if not exists
-        if not os.path.exists("assets"):
-            os.makedirs("assets")
-        
-        # Start all bots
-        threads = []
-        for token in BOT_TOKENS:
-            t = threading.Thread(target=setup_bot, args=(token,))
-            t.daemon = True
-            t.start()
-            threads.append(t)
-            time.sleep(1)  # Stagger startup
-        
-        # Keep main thread alive
-        while True:
-            time.sleep(3600)
-            
-    except Exception as e:
-        logger.critical(f"Fatal error in main: {str(e)}", exc_info=True)
-        raise
-
+# ======================
+# MAIN EXECUTION
+# ======================
 if __name__ == '__main__':
-    main()
+    logger.info("===== STARTING SPAMBOT SYSTEM =====")
+    
+    # Load message files
+    load_messages()
+    
+    # Create assets directory if not exists
+    if not os.path.exists("assets"):
+        os.makedirs("assets")
+    
+    # Start all bots
+    for token in BOT_TOKENS:
+        threading.Thread(
+            target=run_bot,
+            args=(token,),
+            daemon=True
+        ).start()
+        time.sleep(1)  # Stagger startup
+    
+    # Keep main thread alive
+    while True:
+        time.sleep(3600)
