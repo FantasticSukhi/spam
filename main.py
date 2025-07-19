@@ -456,6 +456,53 @@ def button_handler(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         logger.error(f"❌ Button handler error: {str(e)}", exc_info=True)
 
+def ping(update: Update, context: CallbackContext) -> None:
+    """Handle /ping command"""
+    try:
+        start_time = time.time()
+        message = update.message.reply_text("🏓 Pinging...")
+        end_time = time.time()
+        ping_ms = round((end_time - start_time) * 1000, 2)
+        message.edit_text(f"🏓 Pong! {ping_ms}ms\n⏳ Uptime: {get_uptime()}")
+        logger.info(f"⏱ Ping response: {ping_ms}ms")
+    except Exception as e:
+        logger.error(f"❌ Ping command error: {str(e)}", exc_info=True)
+        update.message.reply_text("❌ Couldn't calculate ping")
+
+def alive(update: Update, context: CallbackContext) -> None:
+    """Handle /alive command"""
+    try:
+        owner_url, group_url, channel_url = format_links()
+        system_info = f"""
+<b>System Status:</b>
+🖥 CPU: {psutil.cpu_percent()}%
+🎮 RAM: {psutil.virtual_memory().percent}%
+💾 Disk: {psutil.disk_usage('/').percent}%
+
+<b>Bot Info:</b>
+⏳ Uptime: {get_uptime()}
+👤 Owner: <a href="{owner_url}">{OWNER_USERNAME}</a>
+🔢 Threads: {threading.active_count()}/{MAX_THREADS}
+        """
+        
+        if os.path.exists("assets/alive.jpg"):
+            update.message.reply_photo(
+                photo=open("assets/alive.jpg", "rb"),
+                caption=system_info,
+                parse_mode="HTML"
+            )
+        else:
+            update.message.reply_text(
+                text=system_info,
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+            
+        logger.info(f"💓 Alive check by {update.effective_user.id}")
+    except Exception as e:
+        logger.error(f"❌ Alive command error: {str(e)}", exc_info=True)
+        update.message.reply_text("❌ Couldn't generate status")
+
 # ======================
 # BOT INITIALIZATION
 # ======================
@@ -485,7 +532,7 @@ def initialize_bot(token):
 # MAIN BOT LOOP
 # ======================
 def run_bot(token):
-    """Run bot continuously without crash recovery"""
+    """Run bot continuously"""
     updater = initialize_bot(token)
     dp = updater.dispatcher
     
@@ -511,37 +558,5 @@ def run_bot(token):
     
     logger.info(f"✅ Bot {token[:5]}... is now running")
     
-    # Keep the bot running indefinitely
+    # Keep the bot running
     updater.idle()
-
-# ======================
-# MAIN EXECUTION
-# ======================
-if __name__ == '__main__':
-    logger.info("===== STARTING SPAMBOT SYSTEM =====")
-    
-    # Load message files
-    load_messages()
-    
-    # Create assets directory if not exists
-    if not os.path.exists("assets"):
-        os.makedirs("assets")
-    
-    # Start all bots in separate threads
-    bot_threads = []
-    for token in BOT_TOKENS:
-        thread = threading.Thread(
-            target=run_bot,
-            args=(token,),
-            daemon=True
-        )
-        thread.start()
-        bot_threads.append(thread)
-        time.sleep(1)  # Stagger startup
-    
-    # Keep main thread alive
-    try:
-        while True:
-            time.sleep(3600)
-    except KeyboardInterrupt:
-        logger.info("🛑 Received interrupt signal, shutting down...")
