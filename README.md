@@ -25,7 +25,7 @@ StandardError=file:/var/log/spambot-error.log
 WantedBy=multi-user.target
 
 (Copy and paste this 4th step)
-
+[Note :- Use ctrl+o -> Enter -> ctrl+o]
 
 5. sudo systemctl daemon-reload
 6. sudo systemctl enable spambot.service
