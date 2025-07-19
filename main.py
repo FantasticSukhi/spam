@@ -289,7 +289,172 @@ def unlimited_spam(bot, chat_id, text):
         active_spams.pop(chat_id, None)
         logger.info(f"🛑 Stopped unlimited spam in chat {chat_id}")
 
-# [Previous raid, sraid, stop_spam, button_handler functions remain the same]
+def raid(update: Update, context: CallbackContext) -> None:
+    """Handle /raid command"""
+    try:
+        if not is_admin(update.message.from_user.id):
+            update.message.reply_text("🚫 Admin only command!")
+            return
+
+        if not context.args or len(context.args) < 2:
+            update.message.reply_text("❌ Usage: /raid <count> @username")
+            return
+
+        count = int(context.args[0])
+        target = context.args[1]
+
+        if count < 1 or count > RAID_LIMIT:
+            update.message.reply_text(f"❌ Count must be between 1-{RAID_LIMIT}!")
+            return
+
+        active_threads = threading.active_count()
+        if active_threads > MAX_THREADS:
+            update.message.reply_text(f"⚠️ Server busy! (Threads: {active_threads}/{MAX_THREADS})")
+            return
+
+        if update.message.chat_id in active_raids:
+            update.message.reply_text("⚠️ Another raid is already active in this chat!")
+            return
+
+        active_raids[update.message.chat_id] = True
+        threading.Thread(
+            target=execute_raid,
+            args=(context.bot, update.message.chat_id, target, count),
+            daemon=True
+        ).start()
+        
+        update.message.reply_text(f"⚔️ Raid started against {target}!")
+        logger.info(f"🔥 Raid started by {update.effective_user.id} on {target} ({count} messages)")
+
+    except ValueError:
+        update.message.reply_text("❌ Invalid count! Usage: /raid <count> @username")
+    except Exception as e:
+        logger.error(f"❌ Raid command error: {str(e)}", exc_info=True)
+        update.message.reply_text("❌ Error starting raid!")
+
+def execute_raid(bot, chat_id, target, count):
+    """Execute raid messages"""
+    try:
+        for i in range(count):
+            if not active_raids.get(chat_id, False):
+                break
+                
+            try:
+                message = random.choice(RAID_MESSAGES).format(target=target)
+                bot.send_message(chat_id=chat_id, text=message)
+                
+                if (i+1) % 10 == 0:
+                    logger.info(f"📨 Sent {i+1}/{count} raid messages to {target}")
+                
+                time.sleep(RAID_COOLDOWN)
+                
+            except Exception as msg_error:
+                logger.error(f"❌ Error sending raid message {i+1}: {str(msg_error)}")
+                time.sleep(2)
+                
+    except Exception as e:
+        logger.error(f"❌ Raid execution failed: {str(e)}", exc_info=True)
+    finally:
+        active_raids.pop(chat_id, None)
+        logger.info(f"✅ Raid completed on {target}")
+
+def sraid(update: Update, context: CallbackContext) -> None:
+    """Handle /sraid command"""
+    try:
+        if not is_admin(update.message.from_user.id):
+            update.message.reply_text("🚫 Admin only command!")
+            return
+
+        if not context.args or len(context.args) < 2:
+            update.message.reply_text("❌ Usage: /sraid <count> @username")
+            return
+
+        count = int(context.args[0])
+        target = context.args[1]
+
+        if count < 1 or count > SRAID_LIMIT:
+            update.message.reply_text(f"❌ Count must be between 1-{SRAID_LIMIT}!")
+            return
+
+        active_threads = threading.active_count()
+        if active_threads > MAX_THREADS:
+            update.message.reply_text(f"⚠️ Server busy! (Threads: {active_threads}/{MAX_THREADS})")
+            return
+
+        if update.message.chat_id in active_raids:
+            update.message.reply_text("⚠️ Another raid is already active in this chat!")
+            return
+
+        active_raids[update.message.chat_id] = True
+        threading.Thread(
+            target=execute_sraid,
+            args=(context.bot, update.message.chat_id, target, count),
+            daemon=True
+        ).start()
+        
+        update.message.reply_text(f"💘 Shayari raid started for {target}!")
+        logger.info(f"💌 Shayari raid by {update.effective_user.id} on {target} ({count} messages)")
+
+    except ValueError:
+        update.message.reply_text("❌ Invalid count! Usage: /sraid <count> @username")
+    except Exception as e:
+        logger.error(f"❌ Shayari command error: {str(e)}", exc_info=True)
+        update.message.reply_text("❌ Error starting shayari raid!")
+
+def execute_sraid(bot, chat_id, target, count):
+    """Execute shayari raid"""
+    try:
+        for i in range(count):
+            if not active_raids.get(chat_id, False):
+                break
+                
+            try:
+                message = random.choice(SRAID_MESSAGES).format(target=target)
+                bot.send_message(chat_id=chat_id, text=message)
+                
+                if (i+1) % 5 == 0:
+                    logger.info(f"📨 Sent {i+1}/{count} shayaris to {target}")
+                
+                time.sleep(SRAID_COOLDOWN)
+                
+            except Exception as msg_error:
+                logger.error(f"❌ Error sending shayari {i+1}: {str(msg_error)}")
+                time.sleep(3)
+                
+    except Exception as e:
+        logger.error(f"❌ Shayari execution failed: {str(e)}", exc_info=True)
+    finally:
+        active_raids.pop(chat_id, None)
+        logger.info(f"✅ Shayari raid completed on {target}")
+
+def stop_spam(update: Update, context: CallbackContext) -> None:
+    """Handle /stop command"""
+    try:
+        chat_id = update.message.chat_id
+        if chat_id in active_spams:
+            del active_spams[chat_id]
+            update.message.reply_text("🛑 Stopped unlimited spam!")
+            logger.info(f"⏹ Stopped spam in chat {chat_id}")
+        elif chat_id in active_raids:
+            del active_raids[chat_id]
+            update.message.reply_text("🛑 Stopped active raid!")
+            logger.info(f"⏹ Stopped raid in chat {chat_id}")
+        else:
+            update.message.reply_text("ℹ️ No active spam or raid to stop")
+    except Exception as e:
+        logger.error(f"❌ Stop command error: {str(e)}", exc_info=True)
+        update.message.reply_text("❌ Error stopping activities")
+
+def button_handler(update: Update, context: CallbackContext) -> None:
+    """Handle inline button callbacks"""
+    query = update.callback_query
+    try:
+        if query.data == "help":
+            help_command(update, context)
+        query.answer()
+        logger.info(f"🖱 Button pressed: {query.data}")
+    except Exception as e:
+        logger.error(f"❌ Button handler error: {str(e)}", exc_info=True)
 
 # ======================
 # BOT INITIALIZATION
@@ -320,11 +485,11 @@ def initialize_bot(token):
 # MAIN BOT LOOP
 # ======================
 def run_bot(token):
-    """Run bot continuously"""
+    """Run bot continuously without crash recovery"""
     updater = initialize_bot(token)
     dp = updater.dispatcher
     
-    # Register all command handlers
+    # Register command handlers
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help_command))
     dp.add_handler(CommandHandler("ping", ping))
@@ -346,6 +511,37 @@ def run_bot(token):
     
     logger.info(f"✅ Bot {token[:5]}... is now running")
     
-    # Keep the bot running
-    while True:
-        time.sleep(10)
+    # Keep the bot running indefinitely
+    updater.idle()
+
+# ======================
+# MAIN EXECUTION
+# ======================
+if __name__ == '__main__':
+    logger.info("===== STARTING SPAMBOT SYSTEM =====")
+    
+    # Load message files
+    load_messages()
+    
+    # Create assets directory if not exists
+    if not os.path.exists("assets"):
+        os.makedirs("assets")
+    
+    # Start all bots in separate threads
+    bot_threads = []
+    for token in BOT_TOKENS:
+        thread = threading.Thread(
+            target=run_bot,
+            args=(token,),
+            daemon=True
+        )
+        thread.start()
+        bot_threads.append(thread)
+        time.sleep(1)  # Stagger startup
+    
+    # Keep main thread alive
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        logger.info("🛑 Received interrupt signal, shutting down...")
