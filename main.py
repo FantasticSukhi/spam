@@ -16,7 +16,7 @@ import psutil
 import os
 from config import *
 
-# Configure robust logging
+# Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
@@ -37,8 +37,8 @@ def load_messages(filename):
     except Exception as e:
         logger.error(f"Error loading {filename}: {e}")
         return [
-            f"{{target}} Message file missing! ({filename})",
-            f"{{target}} Please contact admin! ({filename})"
+            f"{{target}} Message file missing!",
+            f"{{target}} Contact admin for help!"
         ]
 
 # Load raid messages
@@ -57,37 +57,44 @@ def get_uptime() -> str:
     minutes, seconds = divmod(remainder, 60)
     return f"{days}d {hours}h {minutes}m {seconds}s"
 
+def format_links():
+    """Ensure all links are properly formatted"""
+    owner_url = f"https://t.me/{OWNER_USERNAME.lstrip('@')}"
+    group_url = GROUP_LINK if GROUP_LINK.startswith('http') else f"https://t.me/{GROUP_LINK.lstrip('@')}"
+    channel_url = CHANNEL_LINK if CHANNEL_LINK.startswith('http') else f"https://t.me/{CHANNEL_LINK.lstrip('@')}"
+    return owner_url, group_url, channel_url
+
 def start(update: Update, context: CallbackContext) -> None:
-    """Send interactive welcome message"""
+    """Send interactive welcome message with perfect links"""
     user = update.effective_user
+    owner_url, group_url, channel_url = format_links()
+    
     keyboard = [
         [InlineKeyboardButton("📚 Commands Help", callback_data="help")],
-        [InlineKeyboardButton("👥 Support Group", url=GROUP_LINK)],
-        [InlineKeyboardButton("📢 Updates Channel", url=CHANNEL_LINK)],
-        [InlineKeyboardButton("👑 Contact Owner", url=f"https://t.me/{OWNER_USERNAME[1:]}")]
+        [InlineKeyboardButton("👥 Support Group", url=group_url)],
+        [InlineKeyboardButton("📢 Updates Channel", url=channel_url)],
+        [InlineKeyboardButton("👑 Contact Owner", url=owner_url)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     welcome_text = f"""
-✨ Welcome {user.mention_html()}! ✨
+✨ <b>Welcome {user.mention_html()}!</b> ✨
 
-I'm a Powerful Spam Bot** created by {OWNER_USERNAME} with advanced features:
+I'm an <b>Advanced Spam Bot</b> with powerful features:
 
-• Multi-Token Support
-• Smart Spam Controls
-• Admin Protection
-• Ultra-Fast Performance
+• <b>Multi-Token Support</b>
+• <b>Smart Spam Controls</b>
+• <b>Admin Protection</b>
 
-📌 Quick Access:
-🔹 /spam - Small spam (1-{SMALL_SPAM_LIMIT} msgs)
-🔹 /bspam - Heavy spam (1-{BIG_SPAM_LIMIT} msgs)
-🔹 /uspam - Unlimited spam (/stop to end)
-🔹 /raid - Normal raid
-🔹 /sraid - Shayari raid
+<b>Quick Start:</b>
+🔹 /spam - Small scale spamming
+🔹 /sraid - Romantic shayari raid
+🔹 /help - All commands
 
-📊 Bot Status: /alive
-⚡ Performance Check: /ping
-🛠 All Commands: /help
+<b>Important Links:</b>
+├ <a href="{group_url}">Support Group</a>
+├ <a href="{channel_url}">Updates Channel</a>
+└ <a href="{owner_url}">Contact Owner</a>
     """
     
     try:
@@ -95,83 +102,91 @@ I'm a Powerful Spam Bot** created by {OWNER_USERNAME} with advanced features:
             photo=open("assets/welcome.jpg", "rb") if os.path.exists("assets/welcome.jpg") else None,
             caption=welcome_text,
             reply_markup=reply_markup,
-            parse_mode="HTML"
+            parse_mode="HTML",
+            disable_web_page_preview=True
         )
     except Exception as e:
-        logger.error(f"Error sending start message: {e}")
+        logger.error(f"Start error: {e}")
         update.message.reply_text(
             welcome_text,
             reply_markup=reply_markup,
-            parse_mode="HTML"
+            parse_mode="HTML",
+            disable_web_page_preview=True
         )
 
 def help_command(update: Update, context: CallbackContext) -> None:
-    """Show help message with all commands"""
+    """Show help with perfect links"""
+    owner_url, group_url, channel_url = format_links()
+    
     help_text = f"""
-📚 Command List 📚
+📚 <b>Command List</b> 📚
 
-🛡 Admin Commands:
+🛡 <b>Admin Commands:</b>
 ├ /spam <count> <text> - Small spam (1-{SMALL_SPAM_LIMIT})
 ├ /bspam <count> <text> - Big spam (1-{BIG_SPAM_LIMIT})
-├ /uspam <text> - Unlimited spam (/stop to end)
-├ /raid <count> @username - Normal raid
-└ /sraid <count> @username - Shayari raid (1-{SRAID_LIMIT})
+├ /uspam <text> - Unlimited spam
+├ /raid <count> @user - Normal raid
+└ /sraid <count> @user - Shayari raid
 
-📊 Info Commands:
-├ /start - Start the bot
-├ /ping - Check response time
-├ /alive - Show bot status
-└ /help - This message
+📊 <b>Info Commands:</b>
+├ /start - Bot introduction
+├ /ping - Check latency
+└ /alive - System status
 
-👥 Support:
-• Group: {GROUP_LINK}
-• Channel: {CHANNEL_LINK}
-• Owner: {OWNER_USERNAME}
+🔗 <b>Links:</b>
+├ <a href="{group_url}">Support Group</a>
+├ <a href="{channel_url}">Updates Channel</a>
+└ <a href="{owner_url}">Contact Owner</a>
     """
-    update.message.reply_text(help_text, parse_mode="Markdown")
+    
+    update.message.reply_text(
+        help_text,
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
 
 def ping(update: Update, context: CallbackContext) -> None:
     """Check bot latency"""
     start = time.time()
     message = update.message.reply_text("🏓 Pinging...")
     end = time.time()
-    ping_time = round((end - start) * 1000, 2)
-    message.edit_text(f"🏓 Pong! {ping_time}ms\n⏳ Uptime: {get_uptime()}")
+    ping_ms = round((end - start) * 1000, 2)
+    message.edit_text(f"🏓 Pong! {ping_ms}ms\n⏳ Uptime: {get_uptime()}")
 
 def alive(update: Update, context: CallbackContext) -> None:
-    """Check bot status with system info"""
+    """Show system status"""
+    owner_url, group_url, channel_url = format_links()
+    
     system_info = f"""
+<b>System Status:</b>
 🖥 CPU: {psutil.cpu_percent()}%
 🎮 RAM: {psutil.virtual_memory().percent}%
 💾 Disk: {psutil.disk_usage('/').percent}%
+
+<b>Bot Info:</b>
+⏳ Uptime: {get_uptime()}
+👤 Owner: <a href="{owner_url}">{OWNER_USERNAME}</a>
     """
+    
     try:
-        with open("assets/alive.jpg", "rb") as photo:
-            update.message.reply_photo(
-                photo=photo,
-                caption=(
-                    f"🤖 **Bot is Alive!** 🤖\n\n"
-                    f"⏳ Uptime: {get_uptime()}\n"
-                    f"👑 Owner: {OWNER_USERNAME}\n"
-                    f"{system_info}\n"
-                    f"📢 Updates: {CHANNEL_LINK}"
-                ),
-                parse_mode="Markdown"
-            )
-    except FileNotFoundError:
+        update.message.reply_photo(
+            photo=open("assets/alive.jpg", "rb") if os.path.exists("assets/alive.jpg") else None,
+            caption=system_info,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+    except Exception as e:
+        logger.error(f"Alive error: {e}")
         update.message.reply_text(
-            f"🤖 Bot is Alive! 🤖\n\n"
-            f"⏳ Uptime: {get_uptime()}\n"
-            f"👑 Owner: {OWNER_USERNAME}\n"
-            f"{system_info}\n"
-            f"📢 Updates: {CHANNEL_LINK}",
-            parse_mode="Markdown"
+            system_info,
+            parse_mode="HTML",
+            disable_web_page_preview=True
         )
 
 def raid(update: Update, context: CallbackContext) -> None:
-    """Handle normal raid command"""
+    """Normal raid command"""
     if not is_admin(update.message.from_user.id):
-        update.message.reply_text("🚫 Admin only command!")
+        update.message.reply_text("🚫 Admin only!")
         return
 
     try:
@@ -179,26 +194,26 @@ def raid(update: Update, context: CallbackContext) -> None:
         target = context.args[1]
         
         if count < 1 or count > RAID_LIMIT:
-            update.message.reply_text(f"❌ Count must be 1-{RAID_LIMIT}!")
+            update.message.reply_text(f"❌ Limit: 1-{RAID_LIMIT}!")
             return
         
         if threading.active_count() > MAX_THREADS:
-            update.message.reply_text("⚠️ Server busy! Try again later.")
+            update.message.reply_text("⚠️ Server busy!")
             return
 
         threading.Thread(
             target=execute_raid,
             args=(context.bot, update.message.chat_id, target, count)
         ).start()
-        update.message.reply_text(f"⚔️ Raid started against {target}!")
+        update.message.reply_text(f"⚔️ Raid started for {target}!")
 
     except (IndexError, ValueError):
-        update.message.reply_text("❌ Usage: /raid <count> @username")
+        update.message.reply_text("❌ Use: /raid <count> @user")
 
 def sraid(update: Update, context: CallbackContext) -> None:
-    """Handle shayari raid command"""
+    """Shayari raid command"""
     if not is_admin(update.message.from_user.id):
-        update.message.reply_text("🚫 Admin only command!")
+        update.message.reply_text("🚫 Admin only!")
         return
 
     try:
@@ -206,24 +221,24 @@ def sraid(update: Update, context: CallbackContext) -> None:
         target = context.args[1]
         
         if count < 1 or count > SRAID_LIMIT:
-            update.message.reply_text(f"❌ Count must be 1-{SRAID_LIMIT}!")
+            update.message.reply_text(f"❌ Limit: 1-{SRAID_LIMIT}!")
             return
         
         if threading.active_count() > MAX_THREADS:
-            update.message.reply_text("⚠️ Server busy! Try again later.")
+            update.message.reply_text("⚠️ Server busy!")
             return
 
         threading.Thread(
             target=execute_sraid,
             args=(context.bot, update.message.chat_id, target, count)
         ).start()
-        update.message.reply_text(f"💘 Shayari raid started for {target}!")
+        update.message.reply_text(f"💘 Shayari for {target}!")
 
     except (IndexError, ValueError):
-        update.message.reply_text("❌ Usage: /sraid <count> @username")
+        update.message.reply_text("❌ Use: /sraid <count> @user")
 
 def execute_raid(bot, chat_id, target, count):
-    """Execute normal raid messages"""
+    """Execute normal raid"""
     try:
         for _ in range(count):
             message = random.choice(RAID_MESSAGES).format(target=target)
@@ -233,19 +248,19 @@ def execute_raid(bot, chat_id, target, count):
         logger.error(f"Raid error: {e}")
 
 def execute_sraid(bot, chat_id, target, count):
-    """Execute shayari raid messages"""
+    """Execute shayari raid"""
     try:
         for _ in range(count):
             message = random.choice(SRAID_MESSAGES).format(target=target)
             bot.send_message(chat_id=chat_id, text=message)
             time.sleep(SRAID_COOLDOWN)
     except Exception as e:
-        logger.error(f"Shayari raid error: {e}")
+        logger.error(f"Shayari error: {e}")
 
 def spam_handler(update: Update, context: CallbackContext, spam_type: str) -> None:
-    """Handle all spam commands"""
+    """Handle spam commands"""
     if not is_admin(update.message.from_user.id):
-        update.message.reply_text("🚫 Admin only command!")
+        update.message.reply_text("🚫 Admin only!")
         return
 
     if not context.args or (spam_type != "uspam" and len(context.args) < 2):
@@ -263,7 +278,7 @@ def spam_handler(update: Update, context: CallbackContext, spam_type: str) -> No
         if spam_type == "uspam":
             message = ' '.join(context.args)
             if chat_id in active_spams:
-                update.message.reply_text("⚠️ Already spamming! Use /stop first.")
+                update.message.reply_text("⚠️ Already spamming!")
                 return
             
             active_spams[chat_id] = True
@@ -271,13 +286,13 @@ def spam_handler(update: Update, context: CallbackContext, spam_type: str) -> No
                 target=infinite_spam,
                 args=(context.bot, chat_id, message)
             ).start()
-            update.message.reply_text("♾️ Unlimited spam started! Use /stop to end.")
+            update.message.reply_text("♾️ Unlimited spam started!")
         else:
             count = int(context.args[0])
             limit = SMALL_SPAM_LIMIT if spam_type == "spam" else BIG_SPAM_LIMIT
             
             if count < 1 or count > limit:
-                update.message.reply_text(f"❌ Count must be 1-{limit}!")
+                update.message.reply_text(f"❌ Limit: 1-{limit}!")
                 return
             
             message = ' '.join(context.args[1:])
@@ -287,10 +302,10 @@ def spam_handler(update: Update, context: CallbackContext, spam_type: str) -> No
                 
     except Exception as e:
         logger.error(f"Spam error: {e}")
-        update.message.reply_text("❌ Error processing your request!")
+        update.message.reply_text("❌ Error processing request!")
 
 def infinite_spam(bot, chat_id, message):
-    """Handle unlimited spam in background"""
+    """Handle unlimited spam"""
     while active_spams.get(chat_id, False):
         try:
             bot.send_message(chat_id=chat_id, text=message)
@@ -303,25 +318,25 @@ def stop_spam(update: Update, context: CallbackContext) -> None:
     chat_id = update.message.chat_id
     if chat_id in active_spams:
         del active_spams[chat_id]
-        update.message.reply_text("🛑 Stopped all spam in this chat!")
+        update.message.reply_text("🛑 Stopped spam!")
     else:
-        update.message.reply_text("ℹ️ No active spam to stop.")
+        update.message.reply_text("ℹ️ No active spam")
 
 def button_handler(update: Update, context: CallbackContext) -> None:
-    """Handle inline button callbacks"""
+    """Handle inline buttons"""
     query = update.callback_query
     if query.data == "help":
         help_command(update, context)
     query.answer()
 
 def setup_bot(token):
-    """Initialize and run a single bot instance with auto-restart"""
+    """Initialize and run bot with auto-restart"""
     while True:
         try:
             updater = Updater(token)
             dp = updater.dispatcher
 
-            # Add all handlers
+            # Register handlers
             dp.add_handler(CommandHandler("start", start))
             dp.add_handler(CommandHandler("help", help_command))
             dp.add_handler(CommandHandler("ping", ping))
@@ -336,20 +351,20 @@ def setup_bot(token):
 
             updater.start_polling()
             logger.info(f"Bot started with token {token[:5]}...")
-            updater.idle()  # Block until stopped
+            updater.idle()
             
         except Exception as e:
             logger.error(f"Bot crashed: {e}")
-            logger.info("Restarting bot in 10 seconds...")
+            logger.info("Restarting in 10 seconds...")
             time.sleep(10)
 
 def main():
     """Main execution with thread management"""
-    # Create necessary directories
+    # Create directories
     if not os.path.exists("assets"):
         os.makedirs("assets")
 
-    # Start each bot in a separate thread
+    # Start bots
     threads = []
     for token in BOT_TOKENS:
         t = threading.Thread(target=setup_bot, args=(token,))
@@ -360,7 +375,7 @@ def main():
 
     # Keep main thread alive
     while True:
-        time.sleep(3600)  # Check hourly
+        time.sleep(3600)
 
 if __name__ == '__main__':
     main()
