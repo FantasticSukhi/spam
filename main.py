@@ -132,13 +132,21 @@ def start(update: Update, context: CallbackContext) -> None:
 🔹 /help - All commands
         """
         
-        update.message.reply_photo(
-            photo=open("assets/welcome.jpg", "rb") if os.path.exists("assets/welcome.jpg") else None,
-            caption=welcome_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
+        if os.path.exists("assets/welcome.jpg"):
+            update.message.reply_photo(
+                photo=open("assets/welcome.jpg", "rb"),
+                caption=welcome_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="HTML"
+            )
+        else:
+            update.message.reply_text(
+                text=welcome_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+            
         logger.info(f"👋 Sent welcome to user {user.id}")
     except Exception as e:
         logger.error(f"❌ Start command error: {str(e)}", exc_info=True)
@@ -204,12 +212,19 @@ def alive(update: Update, context: CallbackContext) -> None:
 🔢 Threads: {threading.active_count()}/{MAX_THREADS}
         """
         
-        update.message.reply_photo(
-            photo=open("assets/alive.jpg", "rb") if os.path.exists("assets/alive.jpg") else None,
-            caption=system_info,
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
+        if os.path.exists("assets/alive.jpg"):
+            update.message.reply_photo(
+                photo=open("assets/alive.jpg", "rb"),
+                caption=system_info,
+                parse_mode="HTML"
+            )
+        else:
+            update.message.reply_text(
+                text=system_info,
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+            
         logger.info(f"💓 Alive check by {update.effective_user.id}")
     except Exception as e:
         logger.error(f"❌ Alive command error: {str(e)}", exc_info=True)
@@ -411,35 +426,32 @@ def initialize_bot(token):
 # MAIN BOT LOOP
 # ======================
 def run_bot(token):
-    """Run bot with automatic crash recovery"""
+    """Run bot continuously"""
+    updater = initialize_bot(token)
+    dp = updater.dispatcher
+    
+    # Register command handlers
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("help", help_command))
+    dp.add_handler(CommandHandler("ping", ping))
+    dp.add_handler(CommandHandler("alive", alive))
+    dp.add_handler(CommandHandler("raid", raid))
+    dp.add_handler(CommandHandler("sraid", sraid))
+    dp.add_handler(CommandHandler("stop", stop_spam))
+    dp.add_handler(CallbackQueryHandler(button_handler))
+    
+    # Start polling
+    updater.start_polling(
+        timeout=30,
+        drop_pending_updates=True,
+        poll_interval=1.0
+    )
+    
+    logger.info(f"✅ Bot {token[:5]}... is now running")
+    
+    # Keep the bot running
     while True:
-        try:
-            updater = initialize_bot(token)
-            dp = updater.dispatcher
-            
-            # Register command handlers
-            dp.add_handler(CommandHandler("start", start))
-            dp.add_handler(CommandHandler("help", help_command))
-            dp.add_handler(CommandHandler("ping", ping))
-            dp.add_handler(CommandHandler("alive", alive))
-            dp.add_handler(CommandHandler("raid", raid))
-            dp.add_handler(CommandHandler("sraid", sraid))
-            dp.add_handler(CommandHandler("stop", stop_spam))
-            dp.add_handler(CallbackQueryHandler(button_handler))
-            
-            # Start polling with proper configuration
-            updater.start_polling(
-                timeout=30,
-                drop_pending_updates=True
-            )
-            
-            logger.info(f"✅ Bot {token[:5]}... is now running")
-            updater.idle()
-            
-        except Exception as e:
-            logger.critical(f"🔥 Bot crashed: {str(e)}", exc_info=True)
-            logger.info("🔄 Restarting in 30 seconds...")
-            time.sleep(30)
+        time.sleep(10)
 
 # ======================
 # MAIN EXECUTION
@@ -454,15 +466,21 @@ if __name__ == '__main__':
     if not os.path.exists("assets"):
         os.makedirs("assets")
     
-    # Start all bots
+    # Start all bots in separate threads
+    bot_threads = []
     for token in BOT_TOKENS:
-        threading.Thread(
+        thread = threading.Thread(
             target=run_bot,
             args=(token,),
             daemon=True
-        ).start()
+        )
+        thread.start()
+        bot_threads.append(thread)
         time.sleep(1)  # Stagger startup
     
     # Keep main thread alive
-    while True:
-        time.sleep(3600)
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        logger.info("🛑 Received interrupt signal, shutting down...")
