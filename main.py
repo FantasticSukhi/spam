@@ -69,25 +69,25 @@ def start(update: Update, context: CallbackContext) -> None:
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     welcome_text = f"""
-✨ **Welcome {user.mention_html()}!** ✨
+✨ Welcome {user.mention_html()}! ✨
 
-I'm a **Powerful Spam Bot** created by {OWNER_USERNAME} with advanced features:
+I'm a Powerful Spam Bot** created by {OWNER_USERNAME} with advanced features:
 
 • Multi-Token Support
 • Smart Spam Controls
 • Admin Protection
 • Ultra-Fast Performance
 
-📌 **Quick Access:**
+📌 Quick Access:
 🔹 /spam - Small spam (1-{SMALL_SPAM_LIMIT} msgs)
 🔹 /bspam - Heavy spam (1-{BIG_SPAM_LIMIT} msgs)
 🔹 /uspam - Unlimited spam (/stop to end)
 🔹 /raid - Normal raid
 🔹 /sraid - Shayari raid
 
-📊 **Bot Status:** /alive
-⚡ **Performance Check:** /ping
-🛠 **All Commands:** /help
+📊 Bot Status: /alive
+⚡ Performance Check: /ping
+🛠 All Commands: /help
     """
     
     try:
@@ -108,22 +108,22 @@ I'm a **Powerful Spam Bot** created by {OWNER_USERNAME} with advanced features:
 def help_command(update: Update, context: CallbackContext) -> None:
     """Show help message with all commands"""
     help_text = f"""
-📚 **Command List** 📚
+📚 Command List 📚
 
-🛡 **Admin Commands:**
+🛡 Admin Commands:
 ├ /spam <count> <text> - Small spam (1-{SMALL_SPAM_LIMIT})
 ├ /bspam <count> <text> - Big spam (1-{BIG_SPAM_LIMIT})
 ├ /uspam <text> - Unlimited spam (/stop to end)
 ├ /raid <count> @username - Normal raid
 └ /sraid <count> @username - Shayari raid (1-{SRAID_LIMIT})
 
-📊 **Info Commands:**
+📊 Info Commands:
 ├ /start - Start the bot
 ├ /ping - Check response time
 ├ /alive - Show bot status
 └ /help - This message
 
-👥 **Support:**
+👥 Support:
 • Group: {GROUP_LINK}
 • Channel: {CHANNEL_LINK}
 • Owner: {OWNER_USERNAME}
@@ -160,7 +160,7 @@ def alive(update: Update, context: CallbackContext) -> None:
             )
     except FileNotFoundError:
         update.message.reply_text(
-            f"🤖 **Bot is Alive!** 🤖\n\n"
+            f"🤖 Bot is Alive! 🤖\n\n"
             f"⏳ Uptime: {get_uptime()}\n"
             f"👑 Owner: {OWNER_USERNAME}\n"
             f"{system_info}\n"
