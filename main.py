@@ -427,15 +427,14 @@ def run_bot(token):
             dp.add_handler(CommandHandler("stop", stop_spam))
             dp.add_handler(CallbackQueryHandler(button_handler))
             
-            # Start polling
+            # Start polling with proper configuration
             updater.start_polling(
-                clean=True,
                 timeout=30,
                 drop_pending_updates=True
             )
             
             logger.info(f"✅ Bot {token[:5]}... is now running")
-            updater.idle()  # Block until stopped
+            updater.idle()
             
         except Exception as e:
             logger.critical(f"🔥 Bot crashed: {str(e)}", exc_info=True)
