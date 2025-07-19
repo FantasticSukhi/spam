@@ -23,15 +23,20 @@ from config import *
 def setup_logging():
     """Configure advanced logging system"""
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     
-    file_handler = RotatingFileHandler(
+    # Ensure log directory exists
+    log_dir = os.path.dirname(LOG_FILE)
+    if log_dir:  # Only create dir if path contains directories
+        os.makedirs(log_dir, exist_ok=True)
+    
+    # Set up rotating logs
+    handler = RotatingFileHandler(
         LOG_FILE,
         maxBytes=5*1024*1024,
         backupCount=3,
         encoding='utf-8'
     )
-    file_handler.setFormatter(logging.Formatter(log_format))
+    handler.setFormatter(logging.Formatter(log_format))
     
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter(log_format))
@@ -39,7 +44,7 @@ def setup_logging():
     logging.basicConfig(
         level=logging.INFO,
         format=log_format,
-        handlers=[file_handler, console_handler]
+        handlers=[handler, console_handler]
     )
 
 setup_logging()
