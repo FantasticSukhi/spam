@@ -19,10 +19,10 @@ MIN_BSPAM = 999
 MAX_BSPAM = 999999
 
 # Delay settings (in seconds)
-SPAM_DELAY = 0.5
+SPAM_DELAY = 0.2
 BSPAM_DELAY = 0.3
 USPAM_DELAY = 0.2
-RAID_DELAY = 0.5
+RAID_DELAY = 0.3
 
 # File paths
 RAID_FILE = "raid.txt"
