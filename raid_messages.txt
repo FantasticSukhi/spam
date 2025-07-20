@@ -1,9 +1,0 @@
-Hello {target}! 👋
-Hey {target}, you've been raided! 😈
-{target} is in the spotlight now! 🔦
-Attention everyone! {target} is here! 🎉
-Raid alert for {target}! 🚨
-Special delivery for {target}! 📦
-{target} just got visited by the raid squad! 💥
-Wake up {target}! It's raid time! ⏰
-{target} is trending now! 🔥
