@@ -9,7 +9,7 @@ from config import (
     CHANNEL_LINK, GROUP_LINK, SUPPORT_CHAT,
     MIN_SPAM, MAX_SPAM, MIN_BSPAM, MAX_BSPAM,
     SPAM_DELAY, BSPAM_DELAY, USPAM_DELAY, RAID_DELAY,
-    RAID_FILE, SHAYARI_FILE
+    RAID_FILE, SHAYARI_FILE, MAX_THREADS
 )
 
 # Set up logging
@@ -24,7 +24,9 @@ active_spams = {}
 active_uspams = {}
 raid_messages = []
 shayari_messages = []
-bots = {}
+bots = []
+current_bot_index = 0
+applications = []
 
 def is_sudo(user_id: int) -> bool:
     """Check if user is sudo or owner"""
@@ -40,25 +42,74 @@ async def check_sudo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool
 
 async def initialize_bots():
     """Initialize all bot instances"""
+    global bots
+    bots = []
     for token in BOT_TOKENS:
         try:
             bot = Bot(token)
             me = await bot.get_me()
-            bots[token] = {
+            bot_info = {
                 'instance': bot,
                 'username': me.username,
-                'available': True
+                'available': True,
+                'token': token
             }
+            bots.append(bot_info)
             logger.info(f"Bot @{me.username} initialized successfully!")
         except Exception as e:
             logger.error(f"Failed to initialize bot with token {token[:10]}...: {e}")
+    
+    if not bots:
+        logger.error("No bots initialized successfully!")
+        return False
+    return True
 
 def get_available_bot():
-    """Get an available bot instance"""
-    for token, bot_data in bots.items():
-        if bot_data['available']:
-            return bot_data['instance']
+    """Get an available bot instance with round-robin"""
+    global current_bot_index
+    
+    if not bots:
+        return None
+    
+    # Try to find an available bot
+    for _ in range(len(bots)):
+        current_bot_index = (current_bot_index + 1) % len(bots)
+        if bots[current_bot_index]['available']:
+            return bots[current_bot_index]['instance']
+    
     return None
+
+async def create_applications():
+    """Create applications for all bots"""
+    global applications
+    applications = []
+    for token in BOT_TOKENS:
+        try:
+            application = Application.builder().token(token).build()
+            applications.append(application)
+            logger.info(f"Created application for token {token[:10]}...")
+        except Exception as e:
+            logger.error(f"Failed to create application for token {token[:10]}...: {e}")
+    return applications
+
+def load_messages():
+    """Load raid and shayari messages from files"""
+    global raid_messages, shayari_messages
+    try:
+        with open(RAID_FILE, 'r', encoding='utf-8') as f:
+            raid_messages = [line.strip() for line in f if line.strip()]
+        logger.info(f"Loaded {len(raid_messages)} raid messages")
+    except FileNotFoundError:
+        raid_messages = ["Default raid message 1", "Default raid message 2"]
+        logger.warning("raid.txt not found, using default messages")
+    
+    try:
+        with open(SHAYARI_FILE, 'r', encoding='utf-8') as f:
+            shayari_messages = [line.strip() for line in f if line.strip()]
+        logger.info(f"Loaded {len(shayari_messages)} shayari messages")
+    except FileNotFoundError:
+        shayari_messages = ["Default shayari 1", "Default shayari 2"]
+        logger.warning("shayari.txt not found, using default messages")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start command handler"""
@@ -100,20 +151,21 @@ async def spam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     active_spams[chat_id] = True
     
-    bot = get_available_bot()
-    if not bot:
-        await update.message.reply_text("No available bots at the moment")
-        return
-    
     for i in range(count):
         if not active_spams.get(chat_id, False):
             break
+        
+        bot = get_available_bot()
+        if not bot:
+            await update.message.reply_text("No available bots at the moment")
+            break
+        
         try:
             await bot.send_message(chat_id=chat_id, text=message)
             await asyncio.sleep(SPAM_DELAY)
         except Exception as e:
             logger.error(f"Error sending message: {e}")
-            break
+            continue
     
     active_spams.pop(chat_id, None)
 
@@ -346,7 +398,7 @@ async def alive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cpu_usage = psutil.cpu_percent()
     ram_usage = psutil.virtual_memory().percent
     bot_count = len(bots)
-    active_bots = sum(1 for bot in bots.values() if bot['available'])
+    active_bots = sum(1 for bot in bots if bot['available'])
     
     alive_message = f"""
     🚀 *Bot is alive and kicking!* 🚀
@@ -398,35 +450,8 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-def load_messages():
-    """Load raid and shayari messages from files"""
-    global raid_messages, shayari_messages
-    try:
-        with open(RAID_FILE, 'r', encoding='utf-8') as f:
-            raid_messages = [line.strip() for line in f if line.strip()]
-    except FileNotFoundError:
-        raid_messages = ["Default raid message 1", "Default raid message 2"]
-        logger.warning("raid.txt not found, using default messages")
-    
-    try:
-        with open(SHAYARI_FILE, 'r', encoding='utf-8') as f:
-            shayari_messages = [line.strip() for line in f if line.strip()]
-    except FileNotFoundError:
-        shayari_messages = ["Default shayari 1", "Default shayari 2"]
-        logger.warning("shayari.txt not found, using default messages")
-
-async def main():
-    """Main function to start the bot"""
-    load_messages()
-    await initialize_bots()
-    
-    if not bots:
-        logger.error("No bots initialized. Exiting.")
-        return
-    
-    application = Application.builder().token(BOT_TOKENS[0]).build()
-    
-    # Add command handlers
+async def register_handlers(application):
+    """Register command handlers for an application"""
     commands = [
         ("start", start),
         ("spam", spam),
@@ -444,13 +469,37 @@ async def main():
     
     for cmd, handler in commands:
         application.add_handler(CommandHandler(cmd, handler))
+
+async def main():
+    """Main function to start the bot"""
+    # Load messages first
+    load_messages()
     
-    logger.info("Bot is starting...")
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
+    # Initialize all bots
+    if not await initialize_bots():
+        logger.error("Failed to initialize any bots. Exiting.")
+        return
     
-    # Keep the application running
+    # Create applications for all bots
+    apps = await create_applications()
+    if not apps:
+        logger.error("Failed to create any applications. Exiting.")
+        return
+    
+    # Register handlers for each application
+    for app in apps:
+        await register_handlers(app)
+    
+    # Start all applications
+    for app in apps:
+        await app.initialize()
+        await app.start()
+        if hasattr(app, 'updater'):
+            await app.updater.start_polling()
+    
+    logger.info(f"All {len(apps)} bots are running...")
+    
+    # Keep the applications running
     while True:
         await asyncio.sleep(3600)  # Sleep for 1 hour
 
@@ -460,7 +509,7 @@ if __name__ == '__main__':
     try:
         loop.run_until_complete(main())
     except KeyboardInterrupt:
-        logger.info("\nBot stopped by user")
+        logger.info("\nBots stopped by user")
     except Exception as e:
         logger.error(f"Error: {e}")
     finally:
