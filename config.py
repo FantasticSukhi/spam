@@ -4,6 +4,10 @@ BOT_TOKENS = [
     "8161769845:AAF2QYkJFcKTreGJF7keex64uVdapVU5muc"
 ]
 
+# Support links
+CHANNEL_LINK = "https://t.me/GARUD_NETWORK"
+GROUP_LINK = "https://t.me/ONLINE_GUPSHUP_2"
+SUPPORT_CHAT = "https://t.me/OFFICIAL_MAMBA_SUPPORT"
 # Admin Configuration
 OWNER_ID = 7448520005  # Your Telegram ID
 SUDO_USERS = [7448520005]  # Additional admin IDs
