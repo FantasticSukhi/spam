@@ -1,5 +1,6 @@
 import asyncio
 import random
+import logging
 from telegram import Bot, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 import psutil
@@ -10,6 +11,13 @@ from config import (
     SPAM_DELAY, BSPAM_DELAY, USPAM_DELAY, RAID_DELAY,
     RAID_FILE, SHAYARI_FILE
 )
+
+# Set up logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # Global variables
 active_spams = {}
@@ -41,9 +49,9 @@ async def initialize_bots():
                 'username': me.username,
                 'available': True
             }
-            print(f"Bot @{me.username} initialized successfully!")
+            logger.info(f"Bot @{me.username} initialized successfully!")
         except Exception as e:
-            print(f"Failed to initialize bot with token {token[:10]}...: {e}")
+            logger.error(f"Failed to initialize bot with token {token[:10]}...: {e}")
 
 def get_available_bot():
     """Get an available bot instance"""
@@ -104,7 +112,7 @@ async def spam(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await bot.send_message(chat_id=chat_id, text=message)
             await asyncio.sleep(SPAM_DELAY)
         except Exception as e:
-            print(f"Error sending message: {e}")
+            logger.error(f"Error sending message: {e}")
             break
     
     active_spams.pop(chat_id, None)
@@ -144,7 +152,7 @@ async def bspam(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await bot.send_message(chat_id=chat_id, text=message)
             await asyncio.sleep(BSPAM_DELAY)
         except Exception as e:
-            print(f"Error sending message: {e}")
+            logger.error(f"Error sending message: {e}")
             continue
     
     active_spams.pop(chat_id, None)
@@ -174,7 +182,7 @@ async def uspam(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await bot.send_message(chat_id=chat_id, text=message)
             await asyncio.sleep(USPAM_DELAY)
         except Exception as e:
-            print(f"Error sending message: {e}")
+            logger.error(f"Error sending message: {e}")
             continue
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -223,7 +231,7 @@ async def raid(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await bot.send_message(chat_id=chat_id, text=f"{username} {message}")
             await asyncio.sleep(RAID_DELAY)
         except Exception as e:
-            print(f"Error sending raid message: {e}")
+            logger.error(f"Error sending raid message: {e}")
             continue
     
     active_spams.pop(chat_id, None)
@@ -265,7 +273,7 @@ async def sraid(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await bot.send_message(chat_id=chat_id, text=f"{username} {message}")
             await asyncio.sleep(RAID_DELAY)
         except Exception as e:
-            print(f"Error sending shayari raid message: {e}")
+            logger.error(f"Error sending shayari raid message: {e}")
             continue
     
     active_spams.pop(chat_id, None)
@@ -398,12 +406,14 @@ def load_messages():
             raid_messages = [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
         raid_messages = ["Default raid message 1", "Default raid message 2"]
+        logger.warning("raid.txt not found, using default messages")
     
     try:
         with open(SHAYARI_FILE, 'r', encoding='utf-8') as f:
             shayari_messages = [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
         shayari_messages = ["Default shayari 1", "Default shayari 2"]
+        logger.warning("shayari.txt not found, using default messages")
 
 async def main():
     """Main function to start the bot"""
@@ -411,7 +421,7 @@ async def main():
     await initialize_bots()
     
     if not bots:
-        print("No bots initialized. Exiting.")
+        logger.error("No bots initialized. Exiting.")
         return
     
     application = Application.builder().token(BOT_TOKENS[0]).build()
@@ -435,8 +445,23 @@ async def main():
     for cmd, handler in commands:
         application.add_handler(CommandHandler(cmd, handler))
     
-    print("Bot is running...")
-    await application.run_polling()
+    logger.info("Bot is starting...")
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+    
+    # Keep the application running
+    while True:
+        await asyncio.sleep(3600)  # Sleep for 1 hour
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        logger.info("\nBot stopped by user")
+    except Exception as e:
+        logger.error(f"Error: {e}")
+    finally:
+        loop.close()
