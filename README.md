@@ -35,4 +35,4 @@ WantedBy=multi-user.target
 10. python3 -m venv venv
 11. source venv/bin/activate
 12. pip install -r requirements.txt
-13. python3 main.py
+13. python3 bot.py
