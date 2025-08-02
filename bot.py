@@ -228,6 +228,7 @@ async def uspam(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bot = get_available_bot()
         if not bot:
             await update.message.reply_text("No available bots at the moment")
+            active_uspams.pop(chat_id, None)  # Clean up if no bots available
             break
         
         try:
@@ -244,7 +245,9 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active_spams.pop(chat_id)
     if chat_id in active_uspams:
         active_uspams.pop(chat_id)
-    await update.message.reply_text("All spam activities stopped!")
+        await update.message.reply_text("Unlimited spam stopped!")
+    else:
+        await update.message.reply_text("No active spam activities to stop!")
 
 async def raid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /raid command"""
